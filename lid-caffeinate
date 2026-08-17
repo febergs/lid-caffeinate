@@ -1,0 +1,64 @@
+#!/bin/bash
+# lid-caffeinate — keep the Mac awake EVEN WITH THE LID CLOSED for N minutes,
+# then automatically restore normal sleep behavior.
+#
+# Usage:
+#   lid-caffeinate          # stay awake 60 min (default)
+#   lid-caffeinate 45       # stay awake 45 min
+#   lid-caffeinate 90       # stay awake 90 min (max 240)
+#
+# Failsafes:
+#   - Auto-restores when the timer expires
+#   - Auto-restores early if battery drops to <= 20%
+#   - Ctrl+C restores immediately (trap)
+#   - Refuses runs longer than 240 min
+
+set -uo pipefail
+
+MINUTES="${1:-60}"
+MAX_MINUTES=240
+BATTERY_FLOOR=20   # restore early if battery at/below this %
+
+if (( MINUTES < 1 || MINUTES > MAX_MINUTES )); then
+  echo "Usage: lid-caffeinate [minutes 1-${MAX_MINUTES}]" >&2
+  exit 1
+fi
+
+# Re-exec as root so the timer + trap survive any sudo-timeout weirdness
+if [[ $EUID -ne 0 ]]; then
+  exec sudo "$0" "$MINUTES"
+fi
+
+restore() {
+  pmset -b disablesleep 0
+  pmset -c disablesleep 0
+  echo ""
+  echo "✅ Sleep re-enabled — lid behaves normally again. Safe to bag/sleep."
+  osascript -e "display notification \"Sleep re-enabled after ${MINUTES} min. Lid back to normal.\" with title \"lid-caffeinate done\"" 2>/dev/null || true
+  exit 0
+}
+trap restore INT TERM EXIT
+
+END_TIME=$(date -v+"${MINUTES}"M "+%H:%M")
+BATT_NOW=$(pmset -g batt | grep -oE '[0-9]+%' | head -1 | tr -d '%')
+
+echo "🔥 lid-caffeinate: staying awake WITH LID CLOSED for ${MINUTES} min (until ${END_TIME})"
+echo "   Battery now: ${BATT_NOW}%  |  will bail early at ${BATTERY_FLOOR}%"
+echo "   Close the lid whenever. Ctrl+C = end early (safely restores)."
+
+# Prevent lid-close sleep on both battery and charger
+pmset -b disablesleep 1
+pmset -c disablesleep 1
+
+# Timer loop (checks battery once a minute)
+END_AT=$(( SECONDS + MINUTES * 60 ))
+while (( SECONDS < END_AT )); do
+  sleep 60
+  BATT=$(pmset -g batt | grep -oE '[0-9]+%' | head -1 | tr -d '%' || echo 100)
+  if [[ -n "${BATT}" ]] && (( BATT <= BATTERY_FLOOR )); then
+    echo "🔋 Battery at ${BATT}% — restoring early so the machine doesn't die bag-warm."
+    break
+  fi
+done
+
+restore
