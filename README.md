@@ -25,6 +25,7 @@ $ lid-caffeinate          # awake (lid closed OK) for 60 min — the default
 
 ```bash
 lid-caffeinate 30         # 30 minutes (max 240)
+lid-caff 30               # same thing — lid-caff is installed as a symlink
 lid-caffeinate --help
 ```
 
@@ -42,10 +43,12 @@ Close the lid whenever. Done? The lid sleeps normally again — no lingering set
 
 One flag: [`pmset disablesleep`](https://keith.github.io/xcode-man-pages/pmset.1.html). While the timer runs, it's set to `1` on both battery and charger profiles; a trap guarantees it's set back to `0` on any exit path. No daemons, no launchd, ~100 lines of bash. Requires sudo (the `pmset` flag is root-only), so it runs via sudo when needed.
 
+**The screen when the lid is closed:** the backlight turns off by itself the moment you close the lid (hardware sensor — no setting needed), so nothing glows in your bag; only the system stays awake. Driving an external display, though? That screen stays lit for the whole run — dim it yourself if you care.
+
 ## Uninstall
 
 ```bash
-sudo rm /usr/local/bin/lid-caffeinate   # or wherever it landed
+sudo rm /usr/local/bin/lid-caffeinate /usr/local/bin/lid-caff   # or wherever they landed
 ```
 
 ## License
