@@ -60,6 +60,10 @@ else
   fi
 fi
 
+# --- short alias: lid-caff ---------------------------------------------------
+alias_path="${DEST%/*}/lid-caff"
+ln -sf "$NAME" "$alias_path" 2>/dev/null || sudo ln -sf "$DEST" "$alias_path" 2>/dev/null || true
+
 # --- smoke test + PATH hint --------------------------------------------------
 bash "$DEST" --help >/dev/null 2>&1 || die "installed, but it doesn't run — please report an issue"
 
@@ -71,5 +75,5 @@ if ! command -v "$NAME" >/dev/null 2>&1; then
 fi
 
 say ""
-say "✅ Installed: ${DEST}"
-say "Try it:  ${NAME} 15   # keep the Mac awake (lid closed OK) for 15 min"
+say "✅ Installed: ${DEST}   (alias: ${alias_path})"
+say "Try it:  lid-caff 15   # keep the Mac awake (lid closed OK) for 15 min"
